@@ -19,9 +19,18 @@ namespace XNode {
             }
         }
 
-        public IO direction { get { return _direction; } }
-        public Node.ConnectionType connectionType { get { return _connectionType; } }
-        public Node.TypeConstraint typeConstraint { get { return _typeConstraint; } }
+        public IO direction { 
+            get { return _direction; }
+            internal set { _direction = value; }
+        }
+        public Node.ConnectionType connectionType {
+            get { return _connectionType; }
+            internal set { _connectionType = value; }
+        }
+        public Node.TypeConstraint typeConstraint {
+            get { return _typeConstraint; }
+            internal set { _typeConstraint = value; }
+        }
 
         /// <summary> Is this port connected to anytihng? </summary>
         public bool IsConnected { get { return connections.Count != 0; } }
@@ -264,10 +273,12 @@ namespace XNode {
             if (input.typeConstraint == XNode.Node.TypeConstraint.Inherited && !input.ValueType.IsAssignableFrom(output.ValueType)) return false;
             if (input.typeConstraint == XNode.Node.TypeConstraint.Strict && input.ValueType != output.ValueType) return false;
             if (input.typeConstraint == XNode.Node.TypeConstraint.InheritedInverse && !output.ValueType.IsAssignableFrom(input.ValueType)) return false;
+            if (input.typeConstraint == XNode.Node.TypeConstraint.InheritedAny && !input.ValueType.IsAssignableFrom(output.ValueType) && !output.ValueType.IsAssignableFrom(input.ValueType)) return false;
             // Check output type constraints
             if (output.typeConstraint == XNode.Node.TypeConstraint.Inherited && !input.ValueType.IsAssignableFrom(output.ValueType)) return false;
             if (output.typeConstraint == XNode.Node.TypeConstraint.Strict && input.ValueType != output.ValueType) return false;
             if (output.typeConstraint == XNode.Node.TypeConstraint.InheritedInverse && !output.ValueType.IsAssignableFrom(input.ValueType)) return false;
+            if (output.typeConstraint == XNode.Node.TypeConstraint.InheritedAny && !input.ValueType.IsAssignableFrom(output.ValueType) && !output.ValueType.IsAssignableFrom(input.ValueType)) return false;
             // Success
             return true;
         }
@@ -290,7 +301,7 @@ namespace XNode {
             }
             // Trigger OnRemoveConnection
             node.OnRemoveConnection(this);
-            if (port != null) port.node.OnRemoveConnection(port);
+            if (port != null && port.IsConnectedTo(this)) port.node.OnRemoveConnection(port);
         }
 
         /// <summary> Disconnect this port from another port </summary>
@@ -298,11 +309,7 @@ namespace XNode {
             // Remove the other ports connection to this port
             NodePort otherPort = connections[i].Port;
             if (otherPort != null) {
-                for (int k = 0; k < otherPort.connections.Count; k++) {
-                    if (otherPort.connections[k].Port == this) {
-                        otherPort.connections.RemoveAt(i);
-                    }
-                }
+                otherPort.connections.RemoveAll(it => { return it.Port == this; });
             }
             // Remove this ports connection to the other
             connections.RemoveAt(i);
